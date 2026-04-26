@@ -1,36 +1,43 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "bms-node-app"
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                // This uses Jenkins SCM config + credentials (IMPORTANT)
                 checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Install Dependencies') {
             steps {
-                echo "Build started..."
-                
-                // If Maven project (pom.xml exists)
-                sh 'mvn clean install || true'
+                sh 'npm install'
             }
         }
 
-        stage('Test') {
+        stage('Docker Build') {
             steps {
-                echo "Running tests..."
-                sh 'mvn test || true'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
+        stage('Run Container') {
+            steps {
+                sh '''
+                docker rm -f bms-container || true
+                docker run -d -p 3000:3000 --name bms-container $IMAGE_NAME
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo "Pipeline executed successfully!"
+            echo "App deployed successfully!"
         }
         failure {
             echo "Pipeline failed!"
